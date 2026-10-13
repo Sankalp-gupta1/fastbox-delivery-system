@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Interactive FastBox delivery assignment simulator.">
+  <title>FastBox Route Lab</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#"><span class="mark">F</span><span><strong>FastBox</strong><small>Delivery Route Lab</small></span></a>
+    <nav><a href="#simulator">Simulator</a><a href="#rules">Rules</a><a href="https://github.com/Sankalp-gupta1/fastbox-delivery-system" target="_blank" rel="noreferrer">GitHub ↗</a></nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <span class="eyebrow">Deterministic delivery simulation</span>
+        <h1>See every package assignment, route and efficiency score.</h1>
+        <p>Run the same rules as the original Python assignment in a browser. Load the supplied sample or paste your own valid JSON, then inspect assignments, distances, agent efficiency and the winning agent.</p>
+        <a class="cta" href="#simulator">Run the simulator</a>
+      </div>
+      <div class="hero-board">
+        <div class="metric"><span>Assignment</span><strong>Nearest warehouse agent</strong></div>
+        <div class="metric"><span>Tie-break</span><strong>Alphabetical agent ID</strong></div>
+        <div class="metric"><span>Movement</span><strong>Continue from last destination</strong></div>
+        <div class="metric"><span>Efficiency</span><strong>Distance ÷ packages</strong></div>
+      </div>
+    </section>
+
+    <section id="simulator" class="simulator">
+      <div class="section-title"><div><span class="eyebrow">Interactive demo</span><h2>Delivery simulator</h2></div><span id="status" class="status">Ready</span></div>
+
+      <div class="workgrid">
+        <aside class="panel input-panel">
+          <div class="panel-head"><div><span class="kicker">Input</span><h3>JSON dataset</h3></div></div>
+          <div class="buttons">
+            <button id="sampleBtn" class="primary" type="button">Load sample</button>
+            <label class="secondary file-label">Upload JSON<input id="fileInput" type="file" accept=".json,application/json"></label>
+          </div>
+          <textarea id="jsonInput" spellcheck="false" aria-label="Simulation JSON"></textarea>
+          <button id="runBtn" class="run" type="button">Simulate deliveries</button>
+          <div id="error" class="error hidden"></div>
+        </aside>
+
+        <section class="results">
+          <div class="summary-grid">
+            <article class="summary accent"><span>Best agent</span><strong id="bestAgent">—</strong><small>lowest avg. distance</small></article>
+            <article class="summary"><span>Packages</span><strong id="packageCount">—</strong><small>delivered</small></article>
+            <article class="summary"><span>Agents</span><strong id="agentCount">—</strong><small>in simulation</small></article>
+            <article class="summary"><span>Total distance</span><strong id="totalDistance">—</strong><small>all agents</small></article>
+          </div>
+
+          <article class="panel map-panel">
+            <div class="panel-head"><div><span class="kicker">Route view</span><h3>Delivery map</h3></div><span class="hint">W = warehouse · A = start · ● = destination</span></div>
+            <div class="map-wrap"><svg id="routeMap" viewBox="0 0 760 470" role="img" aria-label="Delivery route map"></svg></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head"><div><span class="kicker">Performance</span><h3>Agent report</h3></div><button id="downloadBtn" class="link-btn" type="button" disabled>Download report.json</button></div>
+            <div class="table-scroll"><table><thead><tr><th>Agent</th><th>Packages</th><th>Total distance</th><th>Efficiency</th><th>Status</th></tr></thead><tbody id="agentBody"><tr><td colspan="5" class="empty">Run a simulation to see results.</td></tr></tbody></table></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head"><div><span class="kicker">Audit trail</span><h3>Delivery log</h3></div></div>
+            <div id="deliveryLog" class="log-list"><div class="empty">No delivery log yet.</div></div>
+          </article>
+        </section>
+      </div>
+    </section>
+
+    <section id="rules" class="rules">
+      <div class="section-title"><div><span class="eyebrow">Assignment logic</span><h2>The rules are explicit.</h2></div></div>
+      <div class="rule-grid">
+        <article><span>01</span><h3>Validate input</h3><p>Warehouses and agents can be lists or dictionaries. Coordinates must be two finite numbers and IDs must be unique.</p></article>
+        <article><span>02</span><h3>Assign first</h3><p>Every package is assigned before movement begins, using each agent's original position and Euclidean distance to the package warehouse.</p></article>
+        <article><span>03</span><h3>Simulate movement</h3><p>An assigned agent travels from its current position to the warehouse, then to the package destination. The next trip starts from that destination.</p></article>
+        <article><span>04</span><h3>Rank fairly</h3><p>Lower average distance wins. Exact ties prefer more delivered packages, then alphabetical agent ID.</p></article>
+      </div>
+      <p class="footnote">The browser demo mirrors the documented assignment rules. The original Python implementation and its test suite remain in the repository as the reference implementation.</p>
+    </section>
+  </main>
+
+  <footer><span>Built by Sankalp Gupta</span><span>Python reference · JavaScript demo · GitHub Pages</span></footer>
+  <script src="app.js" defer></script>
+</body>
+</html>
