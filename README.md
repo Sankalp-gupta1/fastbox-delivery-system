@@ -30,7 +30,11 @@ It then:
 
 ## Live web simulator
 
-The production version is deployed on Vercel.
+The production simulator is live on Vercel:
+
+**https://fastbox-delivery-simulator.vercel.app/**
+
+No login, API key or database is required.
 
 The web version includes:
 
