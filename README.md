@@ -1,144 +1,326 @@
 # FastBox Delivery Simulator
 
-A small Python program that assigns packages to delivery agents and calculates
-their travel distance for the day. It reads a JSON file and creates a report
-with each agent's delivery count, average distance per package, and the best agent.
+An interactive delivery-assignment simulator built from the original Python take-home assignment.
 
-## Run it
+The project assigns every package to the nearest delivery agent, simulates the agent's movement, calculates the total distance travelled, and finds the most efficient agent.
 
-Use Python 3.9 or newer. No external packages, database, or API keys are needed.
-Open a terminal in the project folder and run:
+The repository contains two parts:
 
-```bash
-python main.py
-```
+1. **Python reference implementation** — the original assignment logic and automated tests.
+2. **Interactive web simulator** — a visual browser version for recruiters and reviewers.
 
-This uses `base_case.json` and writes `report.json` and `delivery_log.json`.
-On systems where Python is named `python3`, replace `python` in these commands.
+## What the project does
 
-To try a supplied test case and the optional CSV export:
+For every package, the simulator knows:
 
-```bash
-python main.py test_cases/test_case_1.json --output-dir output/case_1 --csv
-```
+- which warehouse contains the package,
+- where each delivery agent starts,
+- where the customer destination is.
 
-The output folder is created if needed. Each run replaces the generated files
-in that folder, so use a different `--output-dir` to keep several reports.
-The program refuses to write over the input file itself.
+It then:
 
-## Input and output
+1. finds the agent closest to the package's warehouse,
+2. assigns the package to that agent,
+3. simulates the route,
+4. moves the agent to the package destination,
+5. starts that agent's next trip from the last destination,
+6. calculates every agent's total distance,
+7. calculates average distance per delivered package,
+8. selects the best agent.
 
-Both supplied input formats work:
+## Live web simulator
 
-- The PDF and numbered test cases store warehouses and agents as dictionaries,
-  such as `"W1": [0, 0]`. Packages use the field `warehouse`.
-- `base_case.json` stores warehouses and agents as lists of objects with `id`
-  and `location`. Packages use `warehouse_id`.
+The production version is deployed on Vercel.
 
-The program converts both formats to the same internal structure. If both
-warehouse fields appear in a package, they must agree.
+The web version includes:
 
-| File | Purpose |
-| --- | --- |
-| `main.py` | Input checks, assignment, simulation, and output |
-| `base_case.json` | Original base input, unchanged |
-| `test_cases/` | All ten original numbered inputs, unchanged |
-| `tests/test_delivery.py` | Tests for calculations, routing, input checks, and CLI |
-| `report.json` | Agent totals and best agent; included example is from the base case |
-| `delivery_log.json` | Package IDs, assigned agents, route points, and trip distances |
-| `best_agent.csv` | Optional CSV containing the top performer |
+- built-in sample data,
+- JSON upload,
+- editable JSON input,
+- route visualization,
+- warehouse, agent and destination markers,
+- package-by-package delivery log,
+- agent performance table,
+- best-agent calculation,
+- downloadable `report.json`.
 
-## How the calculation works
+No API key, database or login is required.
 
-The straight-line distance between two points is:
+## Main assignment rules
+
+### 1. Nearest-agent assignment
+
+A package is assigned to the agent whose **starting location** is nearest to that package's warehouse.
+
+Distance is calculated using Euclidean distance:
 
 ```text
 distance = sqrt((x2 - x1)^2 + (y2 - y1)^2)
 ```
 
-For each package, the program compares the warehouse with every agent's starting
-location and selects the nearest agent. After assignment, it processes the
-packages in input order. A trip has two parts: current position to warehouse,
-then warehouse to destination. The agent's position becomes that destination.
+### 2. Assignment happens before delivery movement
+
+All packages are assigned first.
+
+An agent moving during the simulation does not change which packages were originally assigned to that agent.
+
+### 3. The next trip starts from the last destination
+
+After an agent delivers a package, its position becomes that delivery destination.
+
+For the next package, the route is:
 
 ```text
-efficiency = total_distance / packages_delivered
+last destination
+      ↓
+warehouse
+      ↓
+new destination
 ```
 
-A smaller value means less distance per delivered package. It is not a percentage.
-All calculations use full precision; output values are rounded to two decimals.
+### 4. Ties are deterministic
 
-## Assumptions
+If two agents are the same distance from a warehouse, the alphabetically smaller agent ID wins.
 
-The brief leaves some routing details open. These are the choices used here:
+Example:
 
-1. **JSON parsing:** "manually" is interpreted as reading the file directly with
-   Python's built-in `json` module and handling the data with dictionaries and
-   loops. There is no Pandas import, external parser, or hardcoded input.
-2. **Assignment first:** all packages are assigned using agents' initial positions,
-   before anyone moves. This follows the assignment-then-simulation task order.
-   Packages are not reassigned during delivery.
-3. **One package per trip:** deliveries follow input order for each agent. There is
-   no batching or route optimization. This is a simple deterministic simulator,
-   not a claim of the shortest possible overall route.
-4. **Movement:** an agent continues from the last delivery destination. Travel back
-   to a warehouse is counted when picking up the next package, but there is no
-   extra return journey after the final delivery.
-5. **Ties:** equally near agents are chosen by alphabetical ID. Equal unrounded
-   efficiency scores are resolved by more deliveries, then alphabetical ID.
-6. **Idle agents:** their distance is zero and efficiency is `null` because no
-   average can be calculated. They cannot win. If no packages are delivered,
-   `best_agent` is also `null`; a requested CSV then contains just its header.
-7. **Coordinates and time:** coordinates are 2D points in unspecified distance
-   units, not necessarily kilometres. Negative and decimal coordinates are valid.
-   There are no road restrictions, capacities, travel times, or deadlines in the
-   input. All packages are available at the start and deliveries succeed.
-8. **Invalid input:** missing fields, invalid coordinates, repeated IDs in lists,
-   repeated package IDs, unknown warehouses, or packages without agents cause a
-   clear error instead of silently dropping deliveries. The agent ID `best_agent`
-   is reserved because it is a report key.
+```text
+A1 vs A2 at the same distance → A1
+```
+
+### 5. Efficiency
+
+```text
+efficiency = total distance / packages delivered
+```
+
+A smaller value is better.
+
+If two agents have exactly the same unrounded efficiency:
+
+1. the agent with more deliveries wins,
+2. if still tied, alphabetical agent ID wins.
 
 ## Base-case result
 
-Running `python main.py --csv` produces:
+Running the original base case gives:
 
-| Agent | Packages | Total distance | Average distance |
-| --- | --- | --- | --- |
+| Agent | Packages delivered | Total distance | Average distance |
+|---|---:|---:|---:|
 | A1 | 2 | 121.21 | 60.61 |
 | A2 | 2 | 79.21 | 39.60 |
 | A3 | 1 | 14.14 | 14.14 |
 
-The best agent is **A3** under the assumptions above. A1 delivers P1 and P4,
-A2 delivers P2 and P5, and A3 delivers P3.
+**Best agent: A3**
 
-For example, A3 travels from `(95, 30)` to W3 at `(100, 25)`, then to `(105, 20)`.
-Each leg is `sqrt(50)`, giving about `14.14` distance units in total.
+The ranking uses full-precision calculations. Values are rounded only when displayed or saved.
 
-The report numbers printed in the PDF do not follow from its coordinates under
-these routing rules. They are treated as an example of the report structure,
-not expected values to copy. The provided ZIP contains input cases, not an
-official set of expected outputs.
+## Project structure
 
-## Tests
+```text
+fastbox-delivery-system/
+│
+├── main.py
+├── base_case.json
+├── report.json
+├── delivery_log.json
+├── best_agent.csv
+│
+├── test_cases/
+├── tests/
+│   └── test_delivery.py
+│
+├── web/
+│   ├── index.html
+│   ├── styles.css
+│   ├── app.js
+│   └── base_case.json
+│
+└── README.md
+```
+
+## Run the Python version
+
+You need Python 3.9 or newer.
+
+### Step 1 — clone the repository
+
+```bash
+git clone https://github.com/Sankalp-gupta1/fastbox-delivery-system.git
+cd fastbox-delivery-system
+```
+
+### Step 2 — run the base case
+
+```bash
+python main.py
+```
+
+This creates:
+
+```text
+report.json
+delivery_log.json
+```
+
+### Step 3 — also create the CSV
+
+```bash
+python main.py --csv
+```
+
+This additionally creates:
+
+```text
+best_agent.csv
+```
+
+### Run another supplied test case
+
+```bash
+python main.py test_cases/test_case_1.json --output-dir output/case_1 --csv
+```
+
+## Run the web simulator locally
+
+The browser version has no build step.
+
+From the repository root:
+
+```bash
+cd web
+python -m http.server 8000
+```
+
+Open:
+
+```text
+http://localhost:8000
+```
+
+You can now edit the JSON in the page or upload another JSON file.
+
+## Input formats
+
+The project supports both formats used by the assignment material.
+
+### Dictionary style
+
+```json
+{
+  "warehouses": {
+    "W1": [0, 0]
+  },
+  "agents": {
+    "A1": [5, 5]
+  },
+  "packages": [
+    {
+      "id": "P1",
+      "warehouse": "W1",
+      "destination": [10, 10]
+    }
+  ]
+}
+```
+
+### List style
+
+```json
+{
+  "warehouses": [
+    {"id": "W1", "location": [0, 0]}
+  ],
+  "agents": [
+    {"id": "A1", "location": [5, 5]}
+  ],
+  "packages": [
+    {
+      "id": "P1",
+      "warehouse_id": "W1",
+      "destination": [10, 10]
+    }
+  ]
+}
+```
+
+## Validation
+
+The Python implementation checks for:
+
+- missing required fields,
+- invalid coordinates,
+- duplicate IDs,
+- duplicate package IDs,
+- unknown warehouses,
+- packages with no agents,
+- conflicting warehouse fields,
+- invalid or non-finite numbers.
+
+The browser simulator also performs input validation before a run.
+
+## Automated tests
+
+Run:
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-The tests cover the hand-calculated base result, all ten additional inputs,
-both input formats, nearest-agent choice, continuous movement, ties, idle agents,
-an empty day, invalid input, repeatable results, and actual command-line output
-files. Every supplied case is checked for matching input and delivered counts.
+The tests cover:
 
-Verified on Python 3.12: all 21 test methods passed, including CLI runs for all
-11 supplied inputs. These are local checks against the assumptions above, not
-results from the company's private evaluator.
+- the hand-calculated base result,
+- all 10 supplied numbered cases,
+- both supported input formats,
+- nearest-agent assignment,
+- tie handling,
+- agent movement,
+- idle agents,
+- empty package lists,
+- invalid input,
+- output file generation.
 
-## Optional bonus and limits
+The original Python implementation was verified with all 21 test methods passing.
 
-`--csv` exports the top performer using Python's built-in `csv` module.
-Random delays, an ASCII route map, and agents joining mid-day are not implemented.
-There is no timing model in this version, so results stay repeatable.
+## Technology
 
-For P packages and A agents, assignment takes O(P * A) time and the delivery loop
-takes O(P). That is sufficient for the small datasets supplied with this task.
+### Reference implementation
+
+- Python
+- built-in `json`
+- built-in `csv`
+- built-in `math`
+- `unittest`
+
+### Interactive demo
+
+- HTML
+- CSS
+- Vanilla JavaScript
+- SVG route visualization
+- Vercel
+
+## Scope and limitations
+
+This is a deterministic assignment simulator.
+
+It does **not** claim to model real road networks.
+
+The current model does not include:
+
+- traffic,
+- road restrictions,
+- package capacity,
+- delivery deadlines,
+- vehicle types,
+- return-to-depot trips,
+- dynamic reassignment after agents move.
+
+Coordinates are generic 2D points, not guaranteed to represent kilometres.
+
+## Author
+
+**Sankalp Gupta**
+
+- GitHub: https://github.com/Sankalp-gupta1
+- LinkedIn: https://www.linkedin.com/in/sankalp-gupta-rishi-8617302b0/
